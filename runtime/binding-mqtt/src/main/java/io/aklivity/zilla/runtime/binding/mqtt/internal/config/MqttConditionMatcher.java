@@ -17,30 +17,43 @@ package io.aklivity.zilla.runtime.binding.mqtt.internal.config;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import org.agrona.collections.ObjLongPredicate;
+
 import io.aklivity.zilla.runtime.binding.mqtt.config.MqttConditionConfig;
+import io.aklivity.zilla.runtime.binding.mqtt.config.MqttTopicParamConfig;
+import io.aklivity.zilla.runtime.engine.config.GuardedConfig;
 
 public final class MqttConditionMatcher
 {
+    private static final Pattern IDENTITY_PATTERN =
+        Pattern.compile("\\$\\{guarded(?:\\['([a-zA-Z]+[a-zA-Z0-9\\._\\:\\-]*)'\\]).identity\\}");
+
     private final List<Matcher> sessionMatchers;
-    private final List<Matcher> subscribeMatchers;
-    private final List<Matcher> publishMatchers;
+    private final List<ObjLongPredicate<String>> subscribeMatchPredicates;
+    private final List<ObjLongPredicate<String>> publishMatchPredicates;
 
     public MqttConditionMatcher(
-        MqttConditionConfig condition)
+        MqttConditionConfig condition,
+        List<GuardedConfig> guarded)
     {
         this.sessionMatchers =
             condition.sessions != null && !condition.sessions.isEmpty() ?
                 asWildcardMatcher(condition.sessions.stream().map(s -> s.clientId).collect(Collectors.toList())) : null;
-        this.subscribeMatchers =
+
+        Matcher identityMatcher = IDENTITY_PATTERN.matcher("");
+        this.subscribeMatchPredicates =
             condition.subscribes != null && !condition.subscribes.isEmpty() ?
-                asTopicMatcher(condition.subscribes.stream().map(s -> s.topic).collect(Collectors.toList())) : null;
-        this.publishMatchers =
+                condition.subscribes.stream().map(s -> asTopicMatchPredicate(s.topic, s.params, guarded, identityMatcher))
+                    .collect(Collectors.toList()) : null;
+        this.publishMatchPredicates =
             condition.publishes != null && !condition.publishes.isEmpty() ?
-                asTopicMatcher(condition.publishes.stream().map(s -> s.topic).collect(Collectors.toList())) : null;
+                condition.publishes.stream().map(s -> asTopicMatchPredicate(s.topic, s.params, guarded, identityMatcher))
+                    .collect(Collectors.toList()) : null;
     }
 
     public boolean matchesSession(
@@ -62,14 +75,15 @@ public final class MqttConditionMatcher
     }
 
     public boolean matchesSubscribe(
-        String topic)
+        String topic,
+        long authorization)
     {
         boolean match = false;
-        if (subscribeMatchers != null)
+        if (subscribeMatchPredicates != null)
         {
-            for (Matcher matcher : subscribeMatchers)
+            for (ObjLongPredicate<String> predicate : subscribeMatchPredicates)
             {
-                match = matcher.reset(topic).matches();
+                match = predicate.test(topic, authorization);
                 if (match)
                 {
                     break;
@@ -80,14 +94,15 @@ public final class MqttConditionMatcher
     }
 
     public boolean matchesPublish(
-        String topic)
+        String topic,
+        long authorization)
     {
         boolean match = false;
-        if (publishMatchers != null)
+        if (publishMatchPredicates != null)
         {
-            for (Matcher matcher : publishMatchers)
+            for (ObjLongPredicate<String> predicate : publishMatchPredicates)
             {
-                match = matcher.reset(topic).matches();
+                match = predicate.test(topic, authorization);
                 if (match)
                 {
                     break;
@@ -116,19 +131,61 @@ public final class MqttConditionMatcher
         return matchers;
     }
 
-    private static List<Matcher> asTopicMatcher(
-        List<String> wildcards)
+    private static ObjLongPredicate<String> asTopicMatchPredicate(
+        String wildcard,
+        List<MqttTopicParamConfig> params,
+        List<GuardedConfig> guarded,
+        Matcher identityMatcher
+    )
     {
-        List<Matcher> matchers = new ArrayList<>();
-        for (String wildcard : wildcards)
-        {
-            matchers.add(Pattern.compile(wildcard
-                .replace(".", "\\.")
-                .replace("$", "\\$")
-                .replace("+", "[^/]*")
-                .replace("#", ".*")).matcher(""));
+        final Matcher topicMatcher = Pattern.compile(wildcard
+            .replace(".", "\\.")
+            .replace("$", "\\$")
+            .replace("+", "[^/]*")
+            .replace("#", ".*")
+            .replaceAll("\\{([a-zA-Z_]+)\\}", "(?<$1>[^/]+)")).matcher("");
 
+        return params.isEmpty()
+            ? (topic, auth) -> topicMatcher.reset(topic).matches()
+            : (topic, auth) -> matchesWithParams(topic, params, topicMatcher, identityMatcher, auth, guarded);
+    }
+
+    private static boolean matchesWithParams(
+        String topic,
+        List<MqttTopicParamConfig> params,
+        Matcher topicMatcher,
+        Matcher identityMatcher,
+        long authorization,
+        List<GuardedConfig> guarded)
+    {
+        boolean match = topicMatcher.reset(topic).matches();
+        if (match)
+        {
+            for (MqttTopicParamConfig param : params)
+            {
+                String value = param.value;
+                identityMatcher.reset(value);
+                if (identityMatcher.find())
+                {
+                    String guardName = identityMatcher.group(1);
+                    Optional<String> identity = guarded.stream()
+                        .filter(g -> guardName.equals(g.name))
+                        .findFirst()
+                        .map(g -> g.identity.apply(authorization));
+                    if (identity.isEmpty())
+                    {
+                        match = false;
+                        break;
+                    }
+                    value = identityMatcher.replaceAll(identity.get());
+                }
+                match = topicMatcher.group(param.name).equals(value);
+                if (!match)
+                {
+                    break;
+                }
+            }
         }
-        return matchers;
+        return match;
     }
 }

@@ -15,51 +15,48 @@
  */
 package io.aklivity.zilla.runtime.binding.mqtt.config;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.function.Function;
 
 import io.aklivity.zilla.runtime.engine.config.ConfigBuilder;
 
-public class MqttSubscribeConfigBuilder<T> extends ConfigBuilder<T, MqttSubscribeConfigBuilder<T>>
+public class MqttTopicParamConfigBuilder<T> extends ConfigBuilder<T, MqttTopicParamConfigBuilder<T>>
 {
-    private final Function<MqttSubscribeConfig, T> mapper;
+    private final Function<MqttTopicParamConfig, T> mapper;
 
-    private String topic;
+    private String name;
 
-    private final List<MqttTopicParamConfig> params;
+    private String value;
 
-    MqttSubscribeConfigBuilder(
-        Function<MqttSubscribeConfig, T> mapper)
+    MqttTopicParamConfigBuilder(
+        Function<MqttTopicParamConfig, T> mapper)
     {
         this.mapper = mapper;
-        this.params = new ArrayList<>();
     }
 
     @Override
     @SuppressWarnings("unchecked")
-    protected Class<MqttSubscribeConfigBuilder<T>> thisType()
+    protected Class<MqttTopicParamConfigBuilder<T>> thisType()
     {
-        return (Class<MqttSubscribeConfigBuilder<T>>) getClass();
+        return (Class<MqttTopicParamConfigBuilder<T>>) getClass();
     }
 
-    public MqttSubscribeConfigBuilder<T> topic(
-        String topic)
+    public MqttTopicParamConfigBuilder<T> name(
+        String name)
     {
-        this.topic = topic;
+        this.name = name;
         return this;
     }
 
-    public MqttSubscribeConfigBuilder<T> param(
-        MqttTopicParamConfig param)
+    public MqttTopicParamConfigBuilder<T> value(
+        String value)
     {
-        this.params.add(param);
+        this.value = value;
         return this;
     }
 
     @Override
     public T build()
     {
-        return mapper.apply(new MqttSubscribeConfig(topic, params));
+        return mapper.apply(new MqttTopicParamConfig(name, value));
     }
 }

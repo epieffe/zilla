@@ -20,10 +20,12 @@ import jakarta.json.JsonArray;
 import jakarta.json.JsonArrayBuilder;
 import jakarta.json.JsonObject;
 import jakarta.json.JsonObjectBuilder;
+import jakarta.json.JsonString;
 import jakarta.json.bind.adapter.JsonbAdapter;
 
 import io.aklivity.zilla.runtime.binding.mqtt.config.MqttConditionConfig;
 import io.aklivity.zilla.runtime.binding.mqtt.config.MqttConditionConfigBuilder;
+import io.aklivity.zilla.runtime.binding.mqtt.config.MqttTopicParamConfig;
 import io.aklivity.zilla.runtime.binding.mqtt.internal.MqttBinding;
 import io.aklivity.zilla.runtime.engine.config.ConditionConfig;
 import io.aklivity.zilla.runtime.engine.config.ConditionConfigAdapterSpi;
@@ -35,6 +37,7 @@ public final class MqttConditionConfigAdapter implements ConditionConfigAdapterS
     private static final String PUBLISH_NAME = "publish";
     private static final String CLIENT_ID_NAME = "client-id";
     private static final String TOPIC_NAME = "topic";
+    private static final String PARAMS_NAME = "params";
 
     private static final String CLIENT_ID_DEFAULT = "*";
 
@@ -76,6 +79,15 @@ public final class MqttConditionConfigAdapter implements ConditionConfigAdapterS
             {
                 JsonObjectBuilder subscribeJson = Json.createObjectBuilder();
                 subscribeJson.add(TOPIC_NAME, s.topic);
+                if (!s.params.isEmpty())
+                {
+                    JsonObjectBuilder params = Json.createObjectBuilder();
+                    s.params.forEach(par ->
+                    {
+                        params.add(par.name, par.value);
+                    });
+                    subscribeJson.add(PARAMS_NAME, params);
+                }
                 subscribes.add(subscribeJson);
             });
             object.add(SUBSCRIBE_NAME, subscribes);
@@ -89,6 +101,15 @@ public final class MqttConditionConfigAdapter implements ConditionConfigAdapterS
             {
                 JsonObjectBuilder publishJson = Json.createObjectBuilder();
                 publishJson.add(TOPIC_NAME, p.topic);
+                if (!p.params.isEmpty())
+                {
+                    JsonObjectBuilder params = Json.createObjectBuilder();
+                    p.params.forEach(par ->
+                    {
+                        params.add(par.name, par.value);
+                    });
+                    publishJson.add(PARAMS_NAME, params);
+                }
                 publishes.add(publishJson);
             });
             object.add(PUBLISH_NAME, publishes);
@@ -121,11 +142,25 @@ public final class MqttConditionConfigAdapter implements ConditionConfigAdapterS
             JsonArray subscribesJson = object.getJsonArray(SUBSCRIBE_NAME);
             subscribesJson.forEach(s ->
             {
-                String topic = s.asJsonObject().getString(TOPIC_NAME);
+                var subscribeConfig = mqttConfig.subscribe();
+                JsonObject subscribeJson = s.asJsonObject();
 
-                mqttConfig.subscribe()
-                    .topic(topic)
-                    .build();
+                String topic = subscribeJson.getString(TOPIC_NAME);
+                subscribeConfig.topic(topic);
+
+                if (subscribeJson.containsKey(PARAMS_NAME))
+                {
+                    subscribeJson.getJsonObject(PARAMS_NAME).forEach((k, v) ->
+                    {
+                        MqttTopicParamConfig param = MqttTopicParamConfig.builder()
+                            .name(k)
+                            .value(((JsonString) v).getString())
+                            .build();
+                        subscribeConfig.param(param);
+                    });
+                }
+
+                subscribeConfig.build();
             });
         }
 
@@ -134,11 +169,25 @@ public final class MqttConditionConfigAdapter implements ConditionConfigAdapterS
             JsonArray publishesJson = object.getJsonArray(PUBLISH_NAME);
             publishesJson.forEach(p ->
             {
-                String topic = p.asJsonObject().getString(TOPIC_NAME);
+                var publishConfig = mqttConfig.publish();
+                JsonObject publishJson = p.asJsonObject();
 
-                mqttConfig.publish()
-                    .topic(topic)
-                    .build();
+                String topic = publishJson.getString(TOPIC_NAME);
+                publishConfig.topic(topic);
+
+                if (publishJson.containsKey(PARAMS_NAME))
+                {
+                    publishJson.getJsonObject(PARAMS_NAME).forEach((k, v) ->
+                    {
+                        MqttTopicParamConfig param = MqttTopicParamConfig.builder()
+                            .name(k)
+                            .value(((JsonString) v).getString())
+                            .build();
+                        publishConfig.param(param);
+                    });
+                }
+
+                publishConfig.build();
             });
         }
 
