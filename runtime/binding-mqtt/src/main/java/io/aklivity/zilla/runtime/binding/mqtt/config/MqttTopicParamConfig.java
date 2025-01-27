@@ -17,31 +17,30 @@ package io.aklivity.zilla.runtime.binding.mqtt.config;
 
 import static java.util.function.Function.identity;
 
-import java.util.List;
 import java.util.function.Function;
 
-public class MqttSubscribeConfig
+public class MqttTopicParamConfig
 {
-    public final String topic;
+    public final String name;
 
-    public final List<MqttTopicParamConfig> params;
+    public final String value;
 
-    public static MqttSubscribeConfigBuilder<MqttSubscribeConfig> builder()
+    public static MqttTopicParamConfigBuilder<MqttTopicParamConfig> builder()
     {
-        return new MqttSubscribeConfigBuilder<>(identity());
+        return new MqttTopicParamConfigBuilder<>(identity());
     }
 
-    public static <T> MqttSubscribeConfigBuilder<T> builder(
-        Function<MqttSubscribeConfig, T> mapper)
+    public static <T> MqttTopicParamConfigBuilder<T> builder(
+        Function<MqttTopicParamConfig, T> mapper)
     {
-        return new MqttSubscribeConfigBuilder<>(mapper);
+        return new MqttTopicParamConfigBuilder<>(mapper);
     }
 
-    MqttSubscribeConfig(
-        String topic,
-        List<MqttTopicParamConfig> params)
+    MqttTopicParamConfig(
+        String name,
+        String value)
     {
-        this.topic = topic;
-        this.params = params;
+        this.name = name;
+        this.value = value;
     }
 }

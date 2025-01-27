@@ -20,10 +20,12 @@ import jakarta.json.JsonArray;
 import jakarta.json.JsonArrayBuilder;
 import jakarta.json.JsonObject;
 import jakarta.json.JsonObjectBuilder;
+import jakarta.json.JsonString;
 import jakarta.json.bind.adapter.JsonbAdapter;
 
 import io.aklivity.zilla.runtime.binding.mqtt.config.MqttConditionConfig;
 import io.aklivity.zilla.runtime.binding.mqtt.config.MqttConditionConfigBuilder;
+import io.aklivity.zilla.runtime.binding.mqtt.config.MqttTopicParamConfig;
 import io.aklivity.zilla.runtime.binding.mqtt.internal.MqttBinding;
 import io.aklivity.zilla.runtime.engine.config.ConditionConfig;
 import io.aklivity.zilla.runtime.engine.config.ConditionConfigAdapterSpi;
@@ -35,6 +37,7 @@ public final class MqttConditionConfigAdapter implements ConditionConfigAdapterS
     private static final String PUBLISH_NAME = "publish";
     private static final String CLIENT_ID_NAME = "client-id";
     private static final String TOPIC_NAME = "topic";
+    private static final String PARAMS_NAME = "params";
 
     private static final String CLIENT_ID_DEFAULT = "*";
 
@@ -101,6 +104,7 @@ public final class MqttConditionConfigAdapter implements ConditionConfigAdapterS
     public ConditionConfig adaptFromJson(
         JsonObject object)
     {
+        System.out.println("AAA - adaptFromJson: " + object.toString());
         MqttConditionConfigBuilder<MqttConditionConfig> mqttConfig = MqttConditionConfig.builder();
 
         if (object.containsKey(SESSION_NAME))
@@ -121,11 +125,25 @@ public final class MqttConditionConfigAdapter implements ConditionConfigAdapterS
             JsonArray subscribesJson = object.getJsonArray(SUBSCRIBE_NAME);
             subscribesJson.forEach(s ->
             {
-                String topic = s.asJsonObject().getString(TOPIC_NAME);
+                var subscribeConfig = mqttConfig.subscribe();
+                JsonObject subscribeJson = s.asJsonObject();
 
-                mqttConfig.subscribe()
-                    .topic(topic)
-                    .build();
+                String topic = subscribeJson.getString(TOPIC_NAME);
+                subscribeConfig.topic(topic);
+
+                if (subscribeJson.containsKey(PARAMS_NAME))
+                {
+                    subscribeJson.getJsonObject(PARAMS_NAME).forEach((k, v) ->
+                    {
+                        MqttTopicParamConfig param = MqttTopicParamConfig.builder()
+                            .name(k)
+                            .value(((JsonString) v).getString())
+                            .build();
+                        subscribeConfig.param(param);
+                    });
+                }
+
+                subscribeConfig.build();
             });
         }
 
