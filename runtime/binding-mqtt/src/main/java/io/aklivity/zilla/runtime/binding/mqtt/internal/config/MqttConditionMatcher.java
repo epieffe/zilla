@@ -22,6 +22,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import io.aklivity.zilla.runtime.binding.mqtt.config.MqttConditionConfig;
+import io.aklivity.zilla.runtime.binding.mqtt.config.MqttTopicParamConfig;
 
 public final class MqttConditionMatcher
 {
@@ -37,10 +38,10 @@ public final class MqttConditionMatcher
                 asWildcardMatcher(condition.sessions.stream().map(s -> s.clientId).collect(Collectors.toList())) : null;
         this.subscribeMatchers =
             condition.subscribes != null && !condition.subscribes.isEmpty() ?
-                asTopicMatcher(condition.subscribes.stream().map(s -> s.topic).collect(Collectors.toList())) : null;
+                condition.subscribes.stream().map(s -> asTopicMatcher(s.topic, s.params)).collect(Collectors.toList()) : null;
         this.publishMatchers =
             condition.publishes != null && !condition.publishes.isEmpty() ?
-                asTopicMatcher(condition.publishes.stream().map(s -> s.topic).collect(Collectors.toList())) : null;
+                condition.publishes.stream().map(s -> asTopicMatcher(s.topic, List.of())).collect(Collectors.toList()) : null;
     }
 
     public boolean matchesSession(
@@ -62,7 +63,8 @@ public final class MqttConditionMatcher
     }
 
     public boolean matchesSubscribe(
-        String topic)
+        String topic,
+        long authorization)
     {
         boolean match = false;
         if (subscribeMatchers != null)
@@ -80,7 +82,8 @@ public final class MqttConditionMatcher
     }
 
     public boolean matchesPublish(
-        String topic)
+        String topic,
+        long authorization)
     {
         boolean match = false;
         if (publishMatchers != null)
@@ -116,19 +119,22 @@ public final class MqttConditionMatcher
         return matchers;
     }
 
-    private static List<Matcher> asTopicMatcher(
-        List<String> wildcards)
+    private static Matcher asTopicMatcher(
+        String wildcard,
+        List<MqttTopicParamConfig> params
+    )
     {
-        List<Matcher> matchers = new ArrayList<>();
-        for (String wildcard : wildcards)
+        for (MqttTopicParamConfig param : params)
         {
-            matchers.add(Pattern.compile(wildcard
-                .replace(".", "\\.")
-                .replace("$", "\\$")
-                .replace("+", "[^/]*")
-                .replace("#", ".*")).matcher(""));
-
+            System.out.printf("AAA - subscription param: topic=%s, name=%s, value=%s\n", wildcard, param.name, param.value);
         }
-        return matchers;
+        return Pattern.compile(
+                wildcard
+                        .replace(".", "\\.")
+                        .replace("$", "\\$")
+                        .replace("+", "[^/]*")
+                        .replace("#", ".*")
+                        .replaceAll("\\{([a-zA-Z_]+)\\}", "(?<$1>.+)"))
+                .matcher("");
     }
 }

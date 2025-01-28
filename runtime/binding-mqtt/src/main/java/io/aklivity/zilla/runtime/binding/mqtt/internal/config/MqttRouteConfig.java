@@ -63,14 +63,16 @@ public final class MqttRouteConfig
     }
 
     boolean matchesSubscribe(
-        String topic)
+        String topic,
+        long authorization)
     {
-        return when.isEmpty() || when.stream().anyMatch(m -> m.matchesSubscribe(topic));
+        return when.isEmpty() || when.stream().anyMatch(m -> m.matchesSubscribe(topic, authorization));
     }
 
     boolean matchesPublish(
-        String topic)
+        String topic,
+        long authorization)
     {
-        return when.isEmpty() || when.stream().anyMatch(m -> m.matchesPublish(topic));
+        return when.isEmpty() || when.stream().anyMatch(m -> m.matchesPublish(topic, authorization));
     }
 }
