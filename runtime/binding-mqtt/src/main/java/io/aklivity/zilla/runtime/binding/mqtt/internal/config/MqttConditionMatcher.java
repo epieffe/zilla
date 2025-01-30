@@ -16,6 +16,7 @@
 package io.aklivity.zilla.runtime.binding.mqtt.internal.config;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.regex.Matcher;
@@ -145,6 +146,14 @@ public final class MqttConditionMatcher
             .replace("#", ".*")
             .replaceAll("\\{([a-zA-Z_]+)\\}", "(?<$1>[^/]+)")).matcher("");
 
+        Collection<String> topicParams = topicMatcher.namedGroups().keySet();
+        params.stream()
+            .filter(p -> !topicParams.contains(p.name))
+            .forEach(p -> System.out.format("Undefined param constraint for MQTT topic %s: %s\n", wildcard, p.name));
+        topicParams.stream()
+            .filter(tp -> params.stream().noneMatch(p -> p.name.equals(tp)))
+            .forEach(tp -> System.out.format("Unconstrained param for MQTT topic %s: %s\n", wildcard, tp));
+
         return params.isEmpty()
             ? (topic, auth) -> topicMatcher.reset(topic).matches()
             : (topic, auth) -> matchesWithParams(topic, params, topicMatcher, identityMatcher, auth, guarded);
@@ -179,7 +188,14 @@ public final class MqttConditionMatcher
                     }
                     value = identityMatcher.replaceAll(identity.get());
                 }
-                match = topicMatcher.group(param.name).equals(value);
+                try
+                {
+                    match = topicMatcher.group(param.name).equals(value);
+                }
+                catch (IllegalArgumentException e)
+                {
+                    match = false;
+                }
                 if (!match)
                 {
                     break;

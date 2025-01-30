@@ -190,6 +190,36 @@ public class MqttConditionMatcherTest
         assertFalse(matcher.matchesSubscribe("sub/otheruser", 2L));
     }
 
+    @Test
+    public void shouldMatchTopicNameWithUnconstrainedParam()
+    {
+        MqttConditionMatcher matcher = buildMatcher(
+            "pub/{id}",
+            "sub/{id}");
+        assertTrue(matcher.matchesPublish("pub/aaa", 1L));
+        assertTrue(matcher.matchesSubscribe("sub/aaa", 1L));
+        assertTrue(matcher.matchesPublish("pub/bbb", 2L));
+        assertTrue(matcher.matchesSubscribe("sub/bbb", 2L));
+    }
+
+    @Test
+    public void shouldNotMatchTopicNameWithNonExistentParamConstraint()
+    {
+        MqttConditionMatcher matcher = buildMatcher(
+            "pub/{id}",
+            Map.of("other", "${guarded['gname'].identity}"),
+            "sub/{id}",
+            Map.of("other", "${guarded['gname'].identity}"),
+            "gname",
+            Map.of(
+                1L, "myuser",
+                2L, "otheruser"));
+        assertFalse(matcher.matchesPublish("pub/myuser", 1L));
+        assertFalse(matcher.matchesSubscribe("sub/myuser", 1L));
+        assertFalse(matcher.matchesPublish("pub/otheruser", 2L));
+        assertFalse(matcher.matchesSubscribe("sub/otheruser", 2L));
+    }
+
     private static MqttConditionMatcher buildMatcher(
         String publishTopic,
         String subscribeTopic)
