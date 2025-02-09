@@ -18,16 +18,14 @@ package io.aklivity.zilla.runtime.binding.mqtt.internal.config;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import org.agrona.collections.ObjLongPredicate;
+import org.agrona.collections.LongObjPredicate;
 
 import io.aklivity.zilla.runtime.binding.mqtt.config.MqttConditionConfig;
 import io.aklivity.zilla.runtime.binding.mqtt.config.MqttTopicParamConfig;
-import io.aklivity.zilla.runtime.engine.config.GuardedConfig;
 
 public final class MqttConditionMatcher
 {
@@ -35,12 +33,12 @@ public final class MqttConditionMatcher
         Pattern.compile("\\$\\{guarded(?:\\['([a-zA-Z]+[a-zA-Z0-9\\._\\:\\-]*)'\\]).identity\\}");
 
     private final List<Matcher> sessionMatchers;
-    private final List<ObjLongPredicate<String>> subscribeMatchPredicates;
-    private final List<ObjLongPredicate<String>> publishMatchPredicates;
+    private final List<LongObjPredicate<String>> subscribeMatchPredicates;
+    private final List<LongObjPredicate<String>> publishMatchPredicates;
 
     public MqttConditionMatcher(
-        MqttConditionConfig condition,
-        List<GuardedConfig> guarded)
+        MqttRouteConfig route,
+        MqttConditionConfig condition)
     {
         this.sessionMatchers =
             condition.sessions != null && !condition.sessions.isEmpty() ?
@@ -49,11 +47,11 @@ public final class MqttConditionMatcher
         Matcher identityMatcher = IDENTITY_PATTERN.matcher("");
         this.subscribeMatchPredicates =
             condition.subscribes != null && !condition.subscribes.isEmpty() ?
-                condition.subscribes.stream().map(s -> asTopicMatchPredicate(s.topic, s.params, guarded, identityMatcher))
+                condition.subscribes.stream().map(s -> asTopicMatchPredicate(s.topic, s.params, route, identityMatcher))
                     .collect(Collectors.toList()) : null;
         this.publishMatchPredicates =
             condition.publishes != null && !condition.publishes.isEmpty() ?
-                condition.publishes.stream().map(s -> asTopicMatchPredicate(s.topic, s.params, guarded, identityMatcher))
+                condition.publishes.stream().map(s -> asTopicMatchPredicate(s.topic, s.params, route, identityMatcher))
                     .collect(Collectors.toList()) : null;
     }
 
@@ -76,15 +74,15 @@ public final class MqttConditionMatcher
     }
 
     public boolean matchesSubscribe(
-        String topic,
-        long authorization)
+        long authorization,
+        String topic)
     {
         boolean match = false;
         if (subscribeMatchPredicates != null)
         {
-            for (ObjLongPredicate<String> predicate : subscribeMatchPredicates)
+            for (LongObjPredicate<String> predicate : subscribeMatchPredicates)
             {
-                match = predicate.test(topic, authorization);
+                match = predicate.test(authorization, topic);
                 if (match)
                 {
                     break;
@@ -95,15 +93,15 @@ public final class MqttConditionMatcher
     }
 
     public boolean matchesPublish(
-        String topic,
-        long authorization)
+        long authorization,
+        String topic)
     {
         boolean match = false;
         if (publishMatchPredicates != null)
         {
-            for (ObjLongPredicate<String> predicate : publishMatchPredicates)
+            for (LongObjPredicate<String> predicate : publishMatchPredicates)
             {
-                match = predicate.test(topic, authorization);
+                match = predicate.test(authorization, topic);
                 if (match)
                 {
                     break;
@@ -132,10 +130,10 @@ public final class MqttConditionMatcher
         return matchers;
     }
 
-    private static ObjLongPredicate<String> asTopicMatchPredicate(
+    private static LongObjPredicate<String> asTopicMatchPredicate(
         String wildcard,
         List<MqttTopicParamConfig> params,
-        List<GuardedConfig> guarded,
+        MqttRouteConfig route,
         Matcher identityMatcher
     )
     {
@@ -147,50 +145,77 @@ public final class MqttConditionMatcher
             .replaceAll("\\{([a-zA-Z_]+)\\}", "(?<$1>[^/]+)")).matcher("");
 
         Collection<String> topicParams = topicMatcher.namedGroups().keySet();
-        params.stream()
-            .filter(p -> !topicParams.contains(p.name))
-            .forEach(p -> System.out.format("Undefined param constraint for MQTT topic %s: %s\n", wildcard, p.name));
         topicParams.stream()
-            .filter(tp -> params.stream().noneMatch(p -> p.name.equals(tp)))
+            .filter(tp -> params == null || params.stream().noneMatch(p -> p.name.equals(tp)))
             .forEach(tp -> System.out.format("Unconstrained param for MQTT topic %s: %s\n", wildcard, tp));
 
-        return params.isEmpty()
-            ? (topic, auth) -> topicMatcher.reset(topic).matches()
-            : (topic, auth) -> matchesWithParams(topic, params, topicMatcher, identityMatcher, auth, guarded);
+        LongObjPredicate<String> topicMatchPredicate;
+        if (params == null || params.isEmpty())
+        {
+            topicMatchPredicate = (auth, topic) -> topicMatcher.reset(topic).matches();
+        }
+        else
+        {
+            List<GuardedIdentityParam> guardedIdentityParams = new ArrayList<>();
+            List<MqttTopicParamConfig> constantParams = new ArrayList<>();
+            for (MqttTopicParamConfig param : params)
+            {
+                if (!topicParams.contains(param.name))
+                {
+                    System.out.format("Undefined param constraint for MQTT topic %s: %s\n", wildcard, param.name);
+                }
+                if (identityMatcher.reset(param.value).matches())
+                {
+                    String guard = identityMatcher.group(1);
+                    guardedIdentityParams.add(new GuardedIdentityParam(param.name, guard));
+                }
+                else
+                {
+                    constantParams.add(param);
+                }
+            }
+            topicMatchPredicate = (auth, topic) ->
+                matchesWithParams(auth, topic, topicMatcher, route, guardedIdentityParams, constantParams);
+        }
+
+        return topicMatchPredicate;
     }
 
     private static boolean matchesWithParams(
-        String topic,
-        List<MqttTopicParamConfig> params,
-        Matcher topicMatcher,
-        Matcher identityMatcher,
         long authorization,
-        List<GuardedConfig> guarded)
+        String topic,
+        Matcher topicMatcher,
+        MqttRouteConfig route,
+        List<GuardedIdentityParam> guardedIdentityParams,
+        List<MqttTopicParamConfig> constantParams)
     {
         boolean match = topicMatcher.reset(topic).matches();
         if (match)
         {
-            for (MqttTopicParamConfig param : params)
+            for (GuardedIdentityParam param : guardedIdentityParams)
             {
-                String value = param.value;
-                identityMatcher.reset(value);
-                if (identityMatcher.find())
-                {
-                    String guardName = identityMatcher.group(1);
-                    Optional<String> identity = guarded.stream()
-                        .filter(g -> guardName.equals(g.name))
-                        .findFirst()
-                        .map(g -> g.identity.apply(authorization));
-                    if (identity.isEmpty())
-                    {
-                        match = false;
-                        break;
-                    }
-                    value = identityMatcher.replaceAll(identity.get());
-                }
+                String identity = route.identity(param.guard, authorization);
                 try
                 {
-                    match = topicMatcher.group(param.name).equals(value);
+                    match = topicMatcher.group(param.name).equals(identity);
+                }
+                catch (IllegalArgumentException e)
+                {
+                    match = false;
+                }
+                if (!match)
+                {
+                    break;
+                }
+            }
+        }
+        if (match)
+        {
+            for (MqttTopicParamConfig param : constantParams)
+            {
+                try
+                {
+                    match = topicMatcher.group(param.name).equals(param.value);
                 }
                 catch (IllegalArgumentException e)
                 {
@@ -203,5 +228,11 @@ public final class MqttConditionMatcher
             }
         }
         return match;
+    }
+
+    private record GuardedIdentityParam(
+        String name,
+        String guard)
+    {
     }
 }

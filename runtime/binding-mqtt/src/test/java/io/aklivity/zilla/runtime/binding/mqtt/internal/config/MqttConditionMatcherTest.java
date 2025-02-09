@@ -18,7 +18,6 @@ package io.aklivity.zilla.runtime.binding.mqtt.internal.config;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-import java.util.List;
 import java.util.Map;
 
 import org.junit.Test;
@@ -28,6 +27,7 @@ import io.aklivity.zilla.runtime.binding.mqtt.config.MqttPublishConfig;
 import io.aklivity.zilla.runtime.binding.mqtt.config.MqttSubscribeConfig;
 import io.aklivity.zilla.runtime.binding.mqtt.config.MqttTopicParamConfig;
 import io.aklivity.zilla.runtime.engine.config.GuardedConfig;
+import io.aklivity.zilla.runtime.engine.config.RouteConfig;
 
 public class MqttConditionMatcherTest
 {
@@ -38,16 +38,16 @@ public class MqttConditionMatcherTest
         MqttConditionMatcher matcher = buildMatcher(
             "#",
             "#");
-        assertTrue(matcher.matchesPublish("#", 1L));
-        assertTrue(matcher.matchesSubscribe("#", 1L));
-        assertTrue(matcher.matchesPublish("topic", 1L));
-        assertTrue(matcher.matchesSubscribe("topic", 1L));
-        assertTrue(matcher.matchesPublish("topic/pub", 1L));
-        assertTrue(matcher.matchesSubscribe("topic/sub", 1L));
-        assertTrue(matcher.matchesPublish("topic/+/pub", 1L));
-        assertTrue(matcher.matchesSubscribe("topic/+/sub", 1L));
-        assertTrue(matcher.matchesPublish("topic/pub/#", 1L));
-        assertTrue(matcher.matchesSubscribe("topic/sub/#", 1L));
+        assertTrue(matcher.matchesPublish(1L, "#"));
+        assertTrue(matcher.matchesSubscribe(1L, "#"));
+        assertTrue(matcher.matchesPublish(1L, "topic"));
+        assertTrue(matcher.matchesSubscribe(1L, "topic"));
+        assertTrue(matcher.matchesPublish(1L, "topic/pub"));
+        assertTrue(matcher.matchesSubscribe(1L, "topic/sub"));
+        assertTrue(matcher.matchesPublish(1L, "topic/+/pub"));
+        assertTrue(matcher.matchesSubscribe(1L, "topic/+/sub"));
+        assertTrue(matcher.matchesPublish(1L, "topic/pub/#"));
+        assertTrue(matcher.matchesSubscribe(1L, "topic/sub/#"));
     }
 
     @Test
@@ -56,26 +56,26 @@ public class MqttConditionMatcherTest
         MqttConditionMatcher matcher = buildMatcher(
             "topic/pub",
             "topic/sub");
-        assertTrue(matcher.matchesPublish("topic/pub", 1L));
-        assertTrue(matcher.matchesSubscribe("topic/sub", 1L));
-        assertFalse(matcher.matchesPublish("topic/#", 1L));
-        assertFalse(matcher.matchesSubscribe("topic/#", 1L));
-        assertFalse(matcher.matchesPublish("topic/+", 1L));
-        assertFalse(matcher.matchesSubscribe("topic/+", 1L));
-        assertFalse(matcher.matchesPublish("topic/sub", 1L));
-        assertFalse(matcher.matchesSubscribe("topic/pub", 1L));
-        assertFalse(matcher.matchesPublish("topic/pu", 1L));
-        assertFalse(matcher.matchesSubscribe("topic/su", 1L));
-        assertFalse(matcher.matchesPublish("topic/put", 1L));
-        assertFalse(matcher.matchesSubscribe("topic/sup", 1L));
-        assertFalse(matcher.matchesPublish("topic/publ", 1L));
-        assertFalse(matcher.matchesSubscribe("topic/subs", 1L));
-        assertFalse(matcher.matchesPublish("topicpub", 1L));
-        assertFalse(matcher.matchesSubscribe("topicsub", 1L));
-        assertFalse(matcher.matchesPublish("opic/pub", 1L));
-        assertFalse(matcher.matchesSubscribe("opic/sub", 1L));
-        assertFalse(matcher.matchesPublish("popic/pub", 1L));
-        assertFalse(matcher.matchesSubscribe("zopic/sub", 1L));
+        assertTrue(matcher.matchesPublish(1L, "topic/pub"));
+        assertTrue(matcher.matchesSubscribe(1L, "topic/sub"));
+        assertFalse(matcher.matchesPublish(1L, "topic/#"));
+        assertFalse(matcher.matchesSubscribe(1L, "topic/#"));
+        assertFalse(matcher.matchesPublish(1L, "topic/+"));
+        assertFalse(matcher.matchesSubscribe(1L, "topic/+"));
+        assertFalse(matcher.matchesPublish(1L, "topic/sub"));
+        assertFalse(matcher.matchesSubscribe(1L, "topic/pub"));
+        assertFalse(matcher.matchesPublish(1L, "topic/pu"));
+        assertFalse(matcher.matchesSubscribe(1L, "topic/su"));
+        assertFalse(matcher.matchesPublish(1L, "topic/put"));
+        assertFalse(matcher.matchesSubscribe(1L, "topic/sup"));
+        assertFalse(matcher.matchesPublish(1L, "topic/publ"));
+        assertFalse(matcher.matchesSubscribe(1L, "topic/subs"));
+        assertFalse(matcher.matchesPublish(1L, "topicpub"));
+        assertFalse(matcher.matchesSubscribe(1L, "topicsub"));
+        assertFalse(matcher.matchesPublish(1L, "opic/pub"));
+        assertFalse(matcher.matchesSubscribe(1L, "opic/sub"));
+        assertFalse(matcher.matchesPublish(1L, "popic/pub"));
+        assertFalse(matcher.matchesSubscribe(1L, "zopic/sub"));
     }
 
     @Test
@@ -84,14 +84,14 @@ public class MqttConditionMatcherTest
         MqttConditionMatcher matcher = buildMatcher(
             "topic/pub/+",
             "topic/sub/+");
-        assertTrue(matcher.matchesPublish("topic/pub/aa", 1L));
-        assertTrue(matcher.matchesSubscribe("topic/sub/bbb", 1L));
-        assertTrue(matcher.matchesPublish("topic/pub/+", 1L));
-        assertTrue(matcher.matchesSubscribe("topic/sub/+", 1L));
-        assertFalse(matcher.matchesPublish("topic/sub/aa", 1L));
-        assertFalse(matcher.matchesSubscribe("topic/pub/bbb", 1L));
-        assertFalse(matcher.matchesPublish("topic/pub/aa/one", 1L));
-        assertFalse(matcher.matchesSubscribe("topic/sub/bbb/two", 1L));
+        assertTrue(matcher.matchesPublish(1L, "topic/pub/aa"));
+        assertTrue(matcher.matchesSubscribe(1L, "topic/sub/bbb"));
+        assertTrue(matcher.matchesPublish(1L, "topic/pub/+"));
+        assertTrue(matcher.matchesSubscribe(1L, "topic/sub/+"));
+        assertFalse(matcher.matchesPublish(1L, "topic/sub/aa"));
+        assertFalse(matcher.matchesSubscribe(1L, "topic/pub/bbb"));
+        assertFalse(matcher.matchesPublish(1L, "topic/pub/aa/one"));
+        assertFalse(matcher.matchesSubscribe(1L, "topic/sub/bbb/two"));
     }
 
     @Test
@@ -100,12 +100,12 @@ public class MqttConditionMatcherTest
         MqttConditionMatcher matcher = buildMatcher(
             "topic/+/pub/#",
             "topic/+/sub/#");
-        assertTrue(matcher.matchesPublish("topic/x/pub/aa", 1L));
-        assertTrue(matcher.matchesSubscribe("topic/y/sub/b", 1L));
-        assertTrue(matcher.matchesPublish("topic/x/pub/test/cc", 1L));
-        assertTrue(matcher.matchesSubscribe("topic/y/sub/test/bb", 1L));
-        assertFalse(matcher.matchesPublish("topic/pub/aa", 1L));
-        assertFalse(matcher.matchesSubscribe("topic/sub/b", 1L));
+        assertTrue(matcher.matchesPublish(1L, "topic/x/pub/aa"));
+        assertTrue(matcher.matchesSubscribe(1L, "topic/y/sub/b"));
+        assertTrue(matcher.matchesPublish(1L, "topic/x/pub/test/cc"));
+        assertTrue(matcher.matchesSubscribe(1L, "topic/y/sub/test/bb"));
+        assertFalse(matcher.matchesPublish(1L, "topic/pub/aa"));
+        assertFalse(matcher.matchesSubscribe(1L, "topic/sub/b"));
     }
 
     @Test
@@ -120,24 +120,24 @@ public class MqttConditionMatcherTest
             Map.of(
                 1L, "myuser",
                 2L, "otheruser"));
-        assertTrue(matcher.matchesPublish("pub/myuser", 1L));
-        assertTrue(matcher.matchesSubscribe("sub/myuser", 1L));
-        assertTrue(matcher.matchesPublish("pub/otheruser", 2L));
-        assertTrue(matcher.matchesSubscribe("sub/otheruser", 2L));
-        assertFalse(matcher.matchesPublish("pub/myuser", 2L));
-        assertFalse(matcher.matchesSubscribe("sub/myuser", 2L));
-        assertFalse(matcher.matchesPublish("pub/otheruser", 1L));
-        assertFalse(matcher.matchesSubscribe("sub/otheruser", 1L));
-        assertFalse(matcher.matchesPublish("pub/myuset", 1L));
-        assertFalse(matcher.matchesSubscribe("sub/myuset", 1L));
-        assertFalse(matcher.matchesPublish("pub/myusert", 1L));
-        assertFalse(matcher.matchesSubscribe("sub/myusert", 1L));
-        assertFalse(matcher.matchesPublish("pub/myuser/a", 1L));
-        assertFalse(matcher.matchesSubscribe("sub/myuser/a", 1L));
-        assertFalse(matcher.matchesPublish("pub/myuser", 3L));
-        assertFalse(matcher.matchesSubscribe("sub/myuser", 3L));
-        assertFalse(matcher.matchesPublish("pub/null", 3L));
-        assertFalse(matcher.matchesSubscribe("sub/null", 3L));
+        assertTrue(matcher.matchesPublish(1L, "pub/myuser"));
+        assertTrue(matcher.matchesSubscribe(1L, "sub/myuser"));
+        assertTrue(matcher.matchesPublish(2L, "pub/otheruser"));
+        assertTrue(matcher.matchesSubscribe(2L, "sub/otheruser"));
+        assertFalse(matcher.matchesPublish(2L, "pub/myuser"));
+        assertFalse(matcher.matchesSubscribe(2L, "sub/myuser"));
+        assertFalse(matcher.matchesPublish(1L, "pub/otheruser"));
+        assertFalse(matcher.matchesSubscribe(1L, "sub/otheruser"));
+        assertFalse(matcher.matchesPublish(1L, "pub/myuset"));
+        assertFalse(matcher.matchesSubscribe(1L, "sub/myuset"));
+        assertFalse(matcher.matchesPublish(1L, "pub/myusert"));
+        assertFalse(matcher.matchesSubscribe(1L, "sub/myusert"));
+        assertFalse(matcher.matchesPublish(1L, "pub/myuser/a"));
+        assertFalse(matcher.matchesSubscribe(1L, "sub/myuser/a"));
+        assertFalse(matcher.matchesPublish(3L, "pub/myuser"));
+        assertFalse(matcher.matchesSubscribe(3L, "sub/myuser"));
+        assertFalse(matcher.matchesPublish(3L, "pub/null"));
+        assertFalse(matcher.matchesSubscribe(3L, "sub/null"));
     }
 
     @Test
@@ -152,22 +152,22 @@ public class MqttConditionMatcherTest
             Map.of(
                 1L, "myuser",
                 2L, "otheruser"));
-        assertTrue(matcher.matchesPublish("pub/myuser/pubtest", 1L));
-        assertTrue(matcher.matchesSubscribe("sub/myuser/subtest", 1L));
-        assertTrue(matcher.matchesPublish("pub/myuser/pubtest/aaa", 1L));
-        assertTrue(matcher.matchesSubscribe("sub/myuser/subtest/aa", 1L));
-        assertTrue(matcher.matchesPublish("pub/otheruser/pubtest", 2L));
-        assertTrue(matcher.matchesSubscribe("sub/otheruser/subtest", 2L));
-        assertTrue(matcher.matchesPublish("pub/otheruser/pubtest/aa", 2L));
-        assertTrue(matcher.matchesSubscribe("sub/otheruser/subtest/aa", 2L));
-        assertFalse(matcher.matchesPublish("pub/myuser/pubtest", 2L));
-        assertFalse(matcher.matchesSubscribe("sub/myuser/subtest", 2L));
-        assertFalse(matcher.matchesPublish("pub/myuser/pubtest/aaa", 2L));
-        assertFalse(matcher.matchesSubscribe("sub/myuser/subtest/aa", 2L));
-        assertFalse(matcher.matchesPublish("pub/otheruser/pubtest", 1L));
-        assertFalse(matcher.matchesSubscribe("sub/otheruser/subtest", 1L));
-        assertFalse(matcher.matchesPublish("pub/otheruser/pubtest/aa", 1L));
-        assertFalse(matcher.matchesSubscribe("sub/otheruser/subtest/aa", 1L));
+        assertTrue(matcher.matchesPublish(1L, "pub/myuser/pubtest"));
+        assertTrue(matcher.matchesSubscribe(1L, "sub/myuser/subtest"));
+        assertTrue(matcher.matchesPublish(1L, "pub/myuser/pubtest/aaa"));
+        assertTrue(matcher.matchesSubscribe(1L, "sub/myuser/subtest/aa"));
+        assertTrue(matcher.matchesPublish(2L, "pub/otheruser/pubtest"));
+        assertTrue(matcher.matchesSubscribe(2L, "sub/otheruser/subtest"));
+        assertTrue(matcher.matchesPublish(2L, "pub/otheruser/pubtest/aa"));
+        assertTrue(matcher.matchesSubscribe(2L, "sub/otheruser/subtest/aa"));
+        assertFalse(matcher.matchesPublish(2L, "pub/myuser/pubtest"));
+        assertFalse(matcher.matchesSubscribe(2L, "sub/myuser/subtest"));
+        assertFalse(matcher.matchesPublish(2L, "pub/myuser/pubtest/aaa"));
+        assertFalse(matcher.matchesSubscribe(2L, "sub/myuser/subtest/aa"));
+        assertFalse(matcher.matchesPublish(1L, "pub/otheruser/pubtest"));
+        assertFalse(matcher.matchesSubscribe(1L, "sub/otheruser/subtest"));
+        assertFalse(matcher.matchesPublish(1L, "pub/otheruser/pubtest/aa"));
+        assertFalse(matcher.matchesSubscribe(1L, "sub/otheruser/subtest/aa"));
     }
 
     @Test
@@ -182,12 +182,12 @@ public class MqttConditionMatcherTest
             Map.of(
                 1L, "myuser",
                 2L, "otheruser"));
-        assertFalse(matcher.matchesPublish("pub/{id}", 1L));
-        assertFalse(matcher.matchesSubscribe("sub/{id}", 1L));
-        assertFalse(matcher.matchesPublish("pub/myuser", 1L));
-        assertFalse(matcher.matchesSubscribe("sub/myuser", 1L));
-        assertFalse(matcher.matchesPublish("pub/otheruser", 2L));
-        assertFalse(matcher.matchesSubscribe("sub/otheruser", 2L));
+        assertFalse(matcher.matchesPublish(1L, "pub/{id}"));
+        assertFalse(matcher.matchesSubscribe(1L, "sub/{id}"));
+        assertFalse(matcher.matchesPublish(1L, "pub/myuser"));
+        assertFalse(matcher.matchesSubscribe(1L, "sub/myuser"));
+        assertFalse(matcher.matchesPublish(2L, "pub/otheruser"));
+        assertFalse(matcher.matchesSubscribe(2L, "sub/otheruser"));
     }
 
     @Test
@@ -196,10 +196,10 @@ public class MqttConditionMatcherTest
         MqttConditionMatcher matcher = buildMatcher(
             "pub/{id}",
             "sub/{id}");
-        assertTrue(matcher.matchesPublish("pub/aaa", 1L));
-        assertTrue(matcher.matchesSubscribe("sub/aaa", 1L));
-        assertTrue(matcher.matchesPublish("pub/bbb", 2L));
-        assertTrue(matcher.matchesSubscribe("sub/bbb", 2L));
+        assertTrue(matcher.matchesPublish(1L, "pub/aaa"));
+        assertTrue(matcher.matchesSubscribe(1L, "sub/aaa"));
+        assertTrue(matcher.matchesPublish(2L, "pub/bbb"));
+        assertTrue(matcher.matchesSubscribe(2L, "sub/bbb"));
     }
 
     @Test
@@ -214,10 +214,10 @@ public class MqttConditionMatcherTest
             Map.of(
                 1L, "myuser",
                 2L, "otheruser"));
-        assertFalse(matcher.matchesPublish("pub/myuser", 1L));
-        assertFalse(matcher.matchesSubscribe("sub/myuser", 1L));
-        assertFalse(matcher.matchesPublish("pub/otheruser", 2L));
-        assertFalse(matcher.matchesSubscribe("sub/otheruser", 2L));
+        assertFalse(matcher.matchesPublish(1L, "pub/myuser"));
+        assertFalse(matcher.matchesSubscribe(1L, "sub/myuser"));
+        assertFalse(matcher.matchesPublish(2L, "pub/otheruser"));
+        assertFalse(matcher.matchesSubscribe(2L, "sub/otheruser"));
     }
 
     private static MqttConditionMatcher buildMatcher(
@@ -260,6 +260,9 @@ public class MqttConditionMatcherTest
             .name(guardName)
             .build();
         guarded.identity = identities::get;
-        return new MqttConditionMatcher(condition, List.of(guarded));
+        var route = new MqttRouteConfig(RouteConfig.builder()
+            .guarded(guarded)
+            .build());
+        return new MqttConditionMatcher(route, condition);
     }
 }

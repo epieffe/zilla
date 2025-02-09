@@ -17,8 +17,11 @@ package io.aklivity.zilla.runtime.binding.mqtt.internal.config;
 
 import static io.aklivity.zilla.runtime.engine.config.WithConfig.NO_COMPOSITE_ID;
 import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.toMap;
 
 import java.util.List;
+import java.util.Map;
+import java.util.function.LongFunction;
 import java.util.function.LongPredicate;
 
 import io.aklivity.zilla.runtime.binding.mqtt.config.MqttConditionConfig;
@@ -32,6 +35,7 @@ public final class MqttRouteConfig
     private final List<MqttConditionMatcher> when;
     private final MqttWithConfig with;
     private final LongPredicate authorized;
+    private final Map<String, LongFunction<String>> identities;
 
     public MqttRouteConfig(
         RouteConfig route)
@@ -39,10 +43,12 @@ public final class MqttRouteConfig
         this.id = route.id;
         this.when = route.when.stream()
             .map(MqttConditionConfig.class::cast)
-            .map(conf -> new MqttConditionMatcher(conf, route.guarded))
+            .map(c -> new MqttConditionMatcher(this, c))
             .collect(toList());
         this.with = (MqttWithConfig) route.with;
         this.authorized = route.authorized;
+        this.identities = route.guarded.stream()
+            .collect(toMap(g -> g.name, g -> g.identity));
     }
 
     public long compositeId()
@@ -56,6 +62,13 @@ public final class MqttRouteConfig
         return authorized.test(authorization);
     }
 
+    String identity(
+        String guard,
+        long authorization)
+    {
+        return identities.getOrDefault(guard, a -> null).apply(authorization);
+    }
+
     boolean matchesSession(
         String clientId)
     {
@@ -63,16 +76,16 @@ public final class MqttRouteConfig
     }
 
     boolean matchesSubscribe(
-        String topic,
-        long authorization)
+        long authorization,
+        String topic)
     {
-        return when.isEmpty() || when.stream().anyMatch(m -> m.matchesSubscribe(topic, authorization));
+        return when.isEmpty() || when.stream().anyMatch(m -> m.matchesSubscribe(authorization, topic));
     }
 
     boolean matchesPublish(
-        String topic,
-        long authorization)
+        long authorization,
+        String topic)
     {
-        return when.isEmpty() || when.stream().anyMatch(m -> m.matchesPublish(topic, authorization));
+        return when.isEmpty() || when.stream().anyMatch(m -> m.matchesPublish(authorization, topic));
     }
 }

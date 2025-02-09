@@ -27,13 +27,12 @@ public class MqttPublishConfigBuilder<T> extends ConfigBuilder<T, MqttPublishCon
 
     private String topic;
 
-    private final List<MqttTopicParamConfig> params;
+    private List<MqttTopicParamConfig> params;
 
     MqttPublishConfigBuilder(
         Function<MqttPublishConfig, T> mapper)
     {
         this.mapper = mapper;
-        this.params = new ArrayList<>();
     }
 
     @Override
@@ -53,6 +52,10 @@ public class MqttPublishConfigBuilder<T> extends ConfigBuilder<T, MqttPublishCon
     public MqttPublishConfigBuilder<T> param(
         MqttTopicParamConfig param)
     {
+        if (this.params == null)
+        {
+            this.params = new ArrayList<>();
+        }
         this.params.add(param);
         return this;
     }

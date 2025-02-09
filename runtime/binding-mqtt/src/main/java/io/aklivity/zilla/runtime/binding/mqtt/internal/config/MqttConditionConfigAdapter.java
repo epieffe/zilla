@@ -75,17 +75,14 @@ public final class MqttConditionConfigAdapter implements ConditionConfigAdapterS
         {
             JsonArrayBuilder subscribes = Json.createArrayBuilder();
 
-            mqttCondition.subscribes.forEach(s ->
+            mqttCondition.subscribes.forEach(sub ->
             {
                 JsonObjectBuilder subscribeJson = Json.createObjectBuilder();
-                subscribeJson.add(TOPIC_NAME, s.topic);
-                if (!s.params.isEmpty())
+                subscribeJson.add(TOPIC_NAME, sub.topic);
+                if (sub.params != null && !sub.params.isEmpty())
                 {
                     JsonObjectBuilder params = Json.createObjectBuilder();
-                    s.params.forEach(par ->
-                    {
-                        params.add(par.name, par.value);
-                    });
+                    sub.params.forEach(p -> params.add(p.name, p.value));
                     subscribeJson.add(PARAMS_NAME, params);
                 }
                 subscribes.add(subscribeJson);
@@ -97,17 +94,14 @@ public final class MqttConditionConfigAdapter implements ConditionConfigAdapterS
         {
             JsonArrayBuilder publishes = Json.createArrayBuilder();
 
-            mqttCondition.publishes.forEach(p ->
+            mqttCondition.publishes.forEach(pub ->
             {
                 JsonObjectBuilder publishJson = Json.createObjectBuilder();
-                publishJson.add(TOPIC_NAME, p.topic);
-                if (!p.params.isEmpty())
+                publishJson.add(TOPIC_NAME, pub.topic);
+                if (pub.params != null && !pub.params.isEmpty())
                 {
                     JsonObjectBuilder params = Json.createObjectBuilder();
-                    p.params.forEach(par ->
-                    {
-                        params.add(par.name, par.value);
-                    });
+                    pub.params.forEach(p -> params.add(p.name, p.value));
                     publishJson.add(PARAMS_NAME, params);
                 }
                 publishes.add(publishJson);

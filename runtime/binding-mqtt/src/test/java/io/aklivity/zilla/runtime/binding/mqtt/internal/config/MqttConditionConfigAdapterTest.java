@@ -144,9 +144,47 @@ public class MqttConditionConfigAdapterTest
         String text = jsonb.toJson(condition);
 
         assertThat(text, not(nullValue()));
-        assertThat(text, equalTo("{\"session\":[{\"client-id\":\"client-1\"}],\"subscribe\":[{\"topic\":\"reply/one\"}," +
-            "{\"topic\":\"reply/two\"},{\"topic\":\"reply/{id}\",\"params\":{\"id\":\"${guarded['jwt'].identity}\"}}]," +
-            "\"publish\":[{\"topic\":\"command/one\"},{\"topic\":\"command/two\"},{\"topic\":\"command/{id}\",\"params\":" +
-            "{\"id\":\"${guarded['jwt'].identity}\"}}]}"));
+        assertThat(text, equalTo("""
+            {
+                "session":
+                [
+                    {
+                        "client-id":"client-1"
+                    }
+                ],
+                "subscribe":
+                [
+                    {
+                        "topic":"reply/one"
+                    },
+                    {
+                        "topic":"reply/two"
+                    },
+                    {
+                        "topic":"reply/{id}",
+                        "params":
+                        {
+                            "id":"${guarded['jwt'].identity}"
+                        }
+                    }
+                ],
+                "publish":
+                [
+                    {
+                        "topic":"command/one"
+                    },
+                    {
+                        "topic":"command/two"
+                    },
+                    {
+                        "topic":"command/{id}",
+                        "params":
+                        {
+                            "id":"${guarded['jwt'].identity}"
+                        }
+                    }
+                ]
+            }
+            """.replaceAll("\\s*\\n\\s*", "")));
     }
 }
