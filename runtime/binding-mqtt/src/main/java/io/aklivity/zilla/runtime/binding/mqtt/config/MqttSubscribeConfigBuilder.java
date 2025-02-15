@@ -60,6 +60,11 @@ public class MqttSubscribeConfigBuilder<T> extends ConfigBuilder<T, MqttSubscrib
         return this;
     }
 
+    public MqttTopicParamConfigBuilder<MqttSubscribeConfigBuilder<T>> param()
+    {
+        return new MqttTopicParamConfigBuilder<>(this::param);
+    }
+
     @Override
     public T build()
     {

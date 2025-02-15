@@ -60,6 +60,11 @@ public class MqttPublishConfigBuilder<T> extends ConfigBuilder<T, MqttPublishCon
         return this;
     }
 
+    public MqttTopicParamConfigBuilder<MqttPublishConfigBuilder<T>> param()
+    {
+        return new MqttTopicParamConfigBuilder<>(this::param);
+    }
+
     @Override
     public T build()
     {
