@@ -48,6 +48,15 @@ public class PublishIT
 
     @Test
     @Specification({
+        "${net}/publish.topic.guarded.identity.param/client",
+        "${net}/publish.topic.guarded.identity.param/server"})
+    public void shouldPublishToTopicWithGuardedIdentityParam() throws Exception
+    {
+        k3po.finish();
+    }
+
+    @Test
+    @Specification({
         "${net}/publish.one.message.disconnect/client",
         "${net}/publish.one.message.disconnect/server"})
     public void shouldPublishOneMessageAndDisconnect() throws Exception

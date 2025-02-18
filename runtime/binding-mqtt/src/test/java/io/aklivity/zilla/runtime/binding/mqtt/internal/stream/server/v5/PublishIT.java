@@ -67,6 +67,16 @@ public class PublishIT
     }
 
     @Test
+    @Configuration("server.guarded.identity.topic.param.yaml")
+    @Specification({
+        "${net}/publish.topic.guarded.identity.param/client",
+        "${app}/publish.topic.guarded.identity.param/server"})
+    public void shouldPublishToTopicWithGuardedIdentityParam() throws Exception
+    {
+        k3po.finish();
+    }
+
+    @Test
     @Configuration("server.yaml")
     @Specification({
         "${net}/publish.session.takeover/client",

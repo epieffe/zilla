@@ -131,6 +131,14 @@ public class SchemaTest
     }
 
     @Test
+    public void shouldValidateServerWithGuardedIdentityTopicParam()
+    {
+        JsonObject config = schema.validate("server.guarded.identity.topic.param.yaml");
+
+        assertThat(config, not(nullValue()));
+    }
+
+    @Test
     public void shouldValidateServerWithUserPropertiesValidators()
     {
         JsonObject config = schema.validate("server.user.properties.validator.yaml");
